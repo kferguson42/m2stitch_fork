@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from tqdm import tqdm
-from ._typing_utils import Int, Float, NumArray
+from ._typing_utils import Int, Float, NumArray, Bool
 from ._translation_computation import extract_overlap_subregion, ncc
 from copy import deepcopy
 
@@ -45,6 +45,27 @@ def compute_maximum_spanning_tree(grid: pd.DataFrame) -> nx.Graph:
 
 
 def full_tree_weight(grid: pd.DataFrame, images: NumArray, add: Bool = True) -> Float:
+    """Compute the full weight of a provided spanning tree.
+
+    Parameters
+    ----------
+    grid : pd.DataFrame
+        the dataframe for the grid position,
+        with columns "{left|top}_{x|y|ncc|valid3}"
+    images : NumArray
+        array containing the input images to
+        be stitched
+    add : Bool, optional
+        whether to add (True) or multiply (False)
+        the nccs of each individual tile overlap,
+        default True
+
+    Returns
+    -------
+    ncc : Float
+        the total normalized cross-correlation of
+        a given set of possible translations
+    """
     def overlap_ncc(params, im1, im2):
         y, x = params
         subI1 = extract_overlap_subregion(im1, y, x)
@@ -87,6 +108,31 @@ def full_tree_weight(grid: pd.DataFrame, images: NumArray, add: Bool = True) -> 
 
 
 def alternative_max_spanning_tree(grid: pd.DataFrame, images: NumArray, max_iterations: Int = 100000) -> nx.Graph:
+    """Alternative method for computing the maximum spanning tree for
+       grid position determination.
+
+    Parameters
+    ----------
+    grid : pd.DataFrame
+        the dataframe for the grid position,
+        with columns "{left|top}_{x|y|ncc|valid3}"
+    images : NumArray
+        array containing the input images to
+        be stitched, to be passed to the
+        full_tree_weight function
+    max_iterations: Int, optional
+        the number of spanning trees for which to
+        compute full weights, default 100000. set
+        to -1 to run every possible spanning tree
+        (THIS WILL TAKE A LONG TIME!)
+
+    Returns
+    -------
+    max_tree : nx.Graph
+        the result spanning tree with the highest total ncc value
+    nccs : List
+        a list containing the total ncc values computed
+    """
     connection_graph = nx.Graph()
     for i, g in grid.iterrows():
         for direction in ["left", "top"]:
@@ -112,6 +158,8 @@ def alternative_max_spanning_tree(grid: pd.DataFrame, images: NumArray, max_iter
     nccs = []
     for it, s in tqdm(enumerate(all_trees)):
         # iterate over all spanning trees, from maximum default weight to minimum
+        if (max_iterations != -1) and (it >= max_iterations):
+            break
         new_grid = compute_final_position(grid, s)
         ncc = full_tree_weight(new_grid, images)
         nccs.append(ncc)
@@ -119,8 +167,6 @@ def alternative_max_spanning_tree(grid: pd.DataFrame, images: NumArray, max_iter
             max_ncc = deepcopy(ncc)
             max_tree = deepcopy(s)
             max_it = deepcopy(it)
-        if it > max_iterations:
-            break
 
     return max_tree, nccs
 
