@@ -58,6 +58,27 @@ def multi_peak_max(PCM: FloatArray) -> Tuple[IntArray, IntArray, FloatArray]:
     return row[::-1], col[::-1], vals
 
 def multi_peak_local_max(PCM: FloatArray, separation: Int, npeaks: Int) -> Tuple[IntArray, IntArray, FloatArray]:
+    """Find the first to n th largest peaks in PCM, while constraining
+       peaks to be separated from each other.
+
+    Parameters
+    ---------
+    PCM : np.ndarray
+        the peak correlation matrix
+    separation : Int
+        the minimum distance each peak must be from another
+    npeaks : Int
+        how many peaks to find
+
+    Returns
+    -------
+    rows : np.ndarray
+        the row indices for the peaks
+    cols : np.ndarray
+        the column indices for the peaks
+    vals : np.ndarray
+        the values of the peaks
+    """
     from skimage.feature import peak_local_max
     inds = peak_local_max(PCM, min_distance=separation, num_peaks=npeaks, exclude_border=False)
     row = inds[:, 0]; col = inds[:, 1]
