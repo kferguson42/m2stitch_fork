@@ -11,3 +11,4 @@ BoolArray = npt.NDArray[np.bool_]
 
 Int = Union[int, np.int_]
 Float = Union[float, np.float_]
+Bool = Union[bool, np.bool_]

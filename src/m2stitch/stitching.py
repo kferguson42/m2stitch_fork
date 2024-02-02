@@ -8,24 +8,24 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-import numpy as np
+import numpy as np, matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.covariance import EllipticEnvelope
 from tqdm import tqdm
 
 from ._constrained_refinement import refine_translations
 from ._global_optimization import compute_final_position
-from ._global_optimization import compute_maximum_spanning_tree
+from ._global_optimization import compute_maximum_spanning_tree, alternative_max_spanning_tree
 from ._stage_model import compute_image_overlap2
 from ._stage_model import filter_by_overlap_and_correlation
 from ._stage_model import filter_by_repeatability
 from ._stage_model import filter_outliers
 from ._stage_model import replace_invalid_translations
 from ._translation_computation import interpret_translation
-from ._translation_computation import multi_peak_max
+from ._translation_computation import multi_peak_max, multi_peak_local_max
 from ._translation_computation import pcm
 from ._typing_utils import BoolArray
-from ._typing_utils import Float
+from ._typing_utils import Float, Int
 from ._typing_utils import NumArray
 
 
@@ -51,6 +51,8 @@ def stitch_images(
     position_indices: Optional[NumArray] = None,
     position_initial_guess: Optional[NumArray] = None,
     overlap_diff_threshold: Float = 10,
+    npeaks: Int = 2,
+    peak_separation: Int = 10,
     pou: Float = 3,
     full_output: bool = False,
     row_col_transpose: bool = True,
@@ -188,9 +190,10 @@ def stitch_images(
                 )
             else:
                 lims = np.array([[-sizeY, sizeY], [-sizeX, sizeX]])
-            yins, xins, _ = multi_peak_max(PCM)
+            #yins2, xins2, _ = multi_peak_max(PCM)
+            yins, xins, _ = multi_peak_local_max(PCM, peak_separation, npeaks)
             max_peak = interpret_translation(
-                image1, image2, yins, xins, *lims[0], *lims[1]
+                image1, image2, yins, xins, *lims[0], *lims[1], npeaks
             )
             for j, key in enumerate(["ncc", "y", "x"]):
                 grid.loc[i2, f"{direction}_{key}_first"] = max_peak[j]
@@ -250,7 +253,8 @@ def stitch_images(
 
     grid = refine_translations(images, grid, r)
 
-    tree = compute_maximum_spanning_tree(grid)
+    #tree = compute_maximum_spanning_tree(grid)
+    tree, nccs = alternative_max_spanning_tree(grid, images)
     grid = compute_final_position(grid, tree)
 
     prop_dict = {
@@ -263,6 +267,6 @@ def stitch_images(
     if row_col_transpose:
         grid = grid.rename(columns={"x_pos": "y_pos", "y_pos": "x_pos"})
     if full_output:
-        return grid, prop_dict
+        return grid, prop_dict, nccs
     else:
-        return grid[["row", "col", "y_pos", "x_pos"]], prop_dict
+        return grid[["row", "col", "y_pos", "x_pos"]], prop_dict, nccs
