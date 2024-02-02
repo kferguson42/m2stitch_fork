@@ -57,6 +57,15 @@ def multi_peak_max(PCM: FloatArray) -> Tuple[IntArray, IntArray, FloatArray]:
     vals: FloatArray = PCM[row[::-1], col[::-1]]
     return row[::-1], col[::-1], vals
 
+def multi_peak_local_max(PCM: FloatArray, separation: Int, npeaks: Int) -> Tuple[IntArray, IntArray, FloatArray]:
+    from skimage.feature import peak_local_max
+    inds = peak_local_max(PCM, min_distance=separation, num_peaks=npeaks, exclude_border=False)
+    row = inds[:, 0]; col = inds[:, 1]
+    vals = PCM[row, col]
+
+    order = np.argsort(vals)
+    return row[order][::-1], col[order][::-1], vals[order][::-1]
+
 
 def ncc(image1: NumArray, image2: NumArray) -> Float:
     """Compute the normalized cross correlation for two images.
@@ -102,7 +111,9 @@ def extract_overlap_subregion(image: NumArray, y: Int, x: Int) -> NumArray:
     """
     sizeY = image.shape[0]
     sizeX = image.shape[1]
-    assert (np.abs(y) < sizeY) and (np.abs(x) < sizeX)
+    #assert (np.abs(y) < sizeY) and (np.abs(x) < sizeX)
+    if not ((np.abs(y) < sizeY) and (np.abs(x) < sizeX)):
+        return np.array([])
     # clip x to (0, size_Y)
     xstart = int(max(0, min(y, sizeY, key=int), key=int))
     # clip x+sizeY to (0, size_Y)
@@ -162,7 +173,6 @@ def interpret_translation(
     sizeX = image1.shape[1]
     assert np.all(0 <= yins) and np.all(yins < sizeY)
     assert np.all(0 <= xins) and np.all(xins < sizeX)
-
     _ncc = -np.infty
     y = 0
     x = 0
