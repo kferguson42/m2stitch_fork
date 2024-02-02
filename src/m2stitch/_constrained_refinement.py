@@ -47,15 +47,16 @@ def find_local_max_integer_constrained(
     value = func(init_x)
     x = init_x
     for _ in range(max_iter):
-        around_x = [x + np.array(dxs) for dxs in itertools.product(*[[-1, 0, 1]] * dim)]
+        span = [i for i in range(-21, 22)]
+        around_x = [x + np.array(dxs) for dxs in itertools.product(*[span] * dim)]
         around_x = [
-            x
-            for x in around_x
-            if np.all(limits[:, 0] <= x) and np.all(x <= limits[:, 1])
+            xx
+            for xx in around_x
+            if np.all(limits[:, 0] <= xx) and np.all(xx <= limits[:, 1])
         ]
         around_values = np.array(list(map(func, around_x)))
 
-        max_ind = np.argmax(around_values)
+        max_ind = np.nanargmax(around_values)
         max_x = around_x[max_ind]
         max_value = around_values[max_ind]
         if max_value <= value:
@@ -96,6 +97,8 @@ def refine_translations(images: NumArray, grid: pd.DataFrame, r: Float) -> pd.Da
                 x, y = params
                 subI1 = extract_overlap_subregion(image1, x, y)
                 subI2 = extract_overlap_subregion(image2, -x, -y)
+                if subI1.shape[0] == 0 or subI2.shape[0] == 0:
+                    return np.nan
                 return ncc(subI1, subI2)
 
             init_values = [
@@ -115,6 +118,7 @@ def refine_translations(images: NumArray, grid: pd.DataFrame, r: Float) -> pd.Da
             values, ncc_value = find_local_max_integer_constrained(
                 overlap_ncc, np.array(init_values), np.array(limits)
             )
+
             grid.loc[i2, f"{direction}_y"] = values[0]
             grid.loc[i2, f"{direction}_x"] = values[1]
             grid.loc[i2, f"{direction}_ncc"] = ncc_value
