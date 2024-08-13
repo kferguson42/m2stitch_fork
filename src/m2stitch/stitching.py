@@ -57,6 +57,7 @@ def stitch_images(
     full_output: bool = False,
     row_col_transpose: bool = True,
     ncc_threshold: Float = 0.5,
+    iterations: Int = 100000,
 ) -> Tuple[pd.DataFrame, dict]:
     """Compute image positions for stitching.
 
@@ -254,7 +255,7 @@ def stitch_images(
     grid = refine_translations(images, grid, r)
 
     #tree = compute_maximum_spanning_tree(grid)
-    tree, nccs = alternative_max_spanning_tree(grid, images)
+    tree, nccs = alternative_max_spanning_tree(grid, images, max_iterations = iterations)
     grid = compute_final_position(grid, tree)
 
     prop_dict = {
